@@ -1,6 +1,7 @@
 
 const INTEGER = 'INTEGER';
 const PLUS = 'PLUS';
+const MINUS = 'MINUS';
 const EOF = 'EFO';
 
 class Token {
@@ -19,37 +20,64 @@ class Interpreter {
 		this.text = text;
 		this.pos = 0;
 		this.currentToken = null;
+		this.currentChar = this.text[this.pos];
 	}
 
 	error () {
 		throw Error('Error parsing input');
 	}
 
+	advance () {
+		this.pos++;
+		if (this.pos > this.text.length - 1){
+			this.currentChar = null;
+		} else {
+			this.currentChar = this.text[this.pos];
+		}
+	}
+
+	skipWhitespace () {
+		while (this.currentChar !== null && this._isWhitespace(this.currentChar)) {
+			this.advance();
+		}
+	}
+
+	integer () {
+		let result = '';
+
+		while (this.currentChar !== null && this._isDigit(this.currentChar)) {
+			result += this.currentChar;
+			this.advance();
+		}
+
+		return parseInt(result);
+	}
+
 	getNextToken () {
-		let text = this.text;
+		while (this.currentChar !== null) {
+			if (this._isWhitespace(this.currentChar)) {
+				this.skipWhitespace();
+				continue;
+			}
 
-		if (this.pos > text.length - 1){
-			return new Token(EOF, null);
+			if (this._isDigit(this.currentChar)) {
+				return new Token(INTEGER, this.integer());
+			}
+
+			if (this.currentChar === '+') {
+				this.advance();
+				return new Token(PLUS, '+');
+			}
+
+			if (this.currentChar === '-') {
+				this.advance();
+				return new Token(MINUS, '-');
+			}
+
+			this.error();
 		}
 
-		let currentChar = text[this.pos];
-		let parsedDigit = parseInt(currentChar, 10);
-
-		if (!isNaN(parsedDigit)) {
-			let token = new Token(INTEGER, parsedDigit);
-
-			this.pos++;
-			return token;
-		}
-
-		if (currentChar === '+') {
-			let token = new Token(PLUS, currentChar);
-
-			this.pos++;
-			return token;
-		}
-
-		this.error();
+		return new Token(EOF, null);
 	}
 
 	eat (tokenType) {
@@ -69,13 +97,31 @@ class Interpreter {
 
 		let op = this.currentToken;
 
-		this.eat(PLUS);
+		if (op.type === PLUS) {
+			this.eat(PLUS);
+		} else {
+			this.eat(MINUS);
+		}
 
 		let right = this.currentToken;
 
 		this.eat(INTEGER);
 
-		return left.value + right.value;
+		if (op.type === PLUS) {
+			return left.value + right.value;
+		} else {
+			return left.value - right.value;
+		}
+	}
+
+	_isWhitespace (char) {
+		return /^\s$/.test(char)
+	}
+
+	_isDigit (char) {
+		let parsedDigit = parseInt(char, 10);
+
+		return !isNaN(parsedDigit);
 	}
 }
 
