@@ -1,30 +1,25 @@
+const Token = require('lexer/token/Token');
+const {
+	INTEGER,
+	PLUS,
+	MINUS,
+	MUL,
+	DIV,
+	LPAREN,
+	RPAREN,
+	EOF,
+} = require('lexer/token/token-types');
 
-const INTEGER = 'INTEGER';
-const PLUS = 'PLUS';
-const MINUS = 'MINUS';
-const EOF = 'EFO';
 
-class Token {
-	constructor (type, value) {
-		this.type = type;
-		this.value = value;
-	}
-
-	toString () {
-		return `Token(${this.type}, ${this.value})`;
-	}
-}
-
-class Interpreter {
-	constructor (text) {
+module.exports = class Lexer {
+	constructor(text) {
 		this.text = text;
 		this.pos = 0;
-		this.currentToken = null;
 		this.currentChar = this.text[this.pos];
 	}
 
 	error () {
-		throw Error('Error parsing input');
+		throw Error('Invalid character');
 	}
 
 	advance () {
@@ -74,45 +69,32 @@ class Interpreter {
 				return new Token(MINUS, '-');
 			}
 
+			if (this.currentChar === '*') {
+				this.advance();
+				return new Token(MUL, '*');
+			}
+
+			if (this.currentChar === '/') {
+				this.advance();
+				return new Token(DIV, '/');
+			}
+
+			if (this.currentChar === '(') {
+				this.advance();
+				return new Token(LPAREN, '(');
+			}
+
+			if (this.currentChar === ')') {
+				this.advance();
+				return new Token(RPAREN, ')');
+			}
+
 			this.error();
 		}
 
 		return new Token(EOF, null);
 	}
 
-	eat (tokenType) {
-		if (this.currentToken.type === tokenType) {
-			this.currentToken = this.getNextToken();
-		} else {
-			this.error();
-		}
-	}
-
-	expr () {
-		this.currentToken = this.getNextToken();
-
-		let left = this.currentToken;
-
-		this.eat(INTEGER);
-
-		let op = this.currentToken;
-
-		if (op.type === PLUS) {
-			this.eat(PLUS);
-		} else {
-			this.eat(MINUS);
-		}
-
-		let right = this.currentToken;
-
-		this.eat(INTEGER);
-
-		if (op.type === PLUS) {
-			return left.value + right.value;
-		} else {
-			return left.value - right.value;
-		}
-	}
 
 	_isWhitespace (char) {
 		return /^\s$/.test(char)
@@ -123,7 +105,4 @@ class Interpreter {
 
 		return !isNaN(parsedDigit);
 	}
-}
-
-
-module.exports = Interpreter;
+};
