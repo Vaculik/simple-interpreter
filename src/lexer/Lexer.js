@@ -7,8 +7,13 @@ const {
 	DIV,
 	LPAREN,
 	RPAREN,
+	ID,
+	ASSIGN,
+	SEMI,
+	DOT,
 	EOF,
 } = require('lexer/token/token-types');
+const RESERVED_KEYWORDS = require('lexer/token/reserved-keywords');
 
 
 module.exports = class Lexer {
@@ -31,6 +36,16 @@ module.exports = class Lexer {
 		}
 	}
 
+	peek() {
+		const peekPos = this.pos + 1;
+
+		if (peekPos > this.text.length) {
+			return null;
+		} else {
+			return this.text[peekPos];
+		}
+	}
+
 	skipWhitespace () {
 		while (this.currentChar !== null && this._isWhitespace(this.currentChar)) {
 			this.advance();
@@ -46,6 +61,17 @@ module.exports = class Lexer {
 		}
 
 		return parseInt(result);
+	}
+
+	id() {
+		let result = '';
+
+		while (this.currentChar !== null && this._isLetter(this.currentChar)) {
+			result += this.currentChar;
+			this.advance();
+		}
+
+		return RESERVED_KEYWORDS[result] || new Token(ID, result);
 	}
 
 	getNextToken () {
@@ -89,6 +115,26 @@ module.exports = class Lexer {
 				return new Token(RPAREN, ')');
 			}
 
+			if (this._isLetter(this.currentChar)) {
+				return this.id();
+			}
+
+			if (this.currentChar === ':' && this.peek() === '=') {
+				this.advance();
+				this.advance();
+				return new Token(ASSIGN, ':=');
+			}
+
+			if (this.currentChar === ';') {
+				this.advance();
+				return new Token(SEMI, ';');
+			}
+
+			if (this.currentChar === '.') {
+				this.advance();
+				return new Token(DOT, '.');
+			}
+
 			this.error();
 		}
 
@@ -97,12 +143,16 @@ module.exports = class Lexer {
 
 
 	_isWhitespace (char) {
-		return /^\s$/.test(char)
+		return /^\s$/.test(char);
 	}
 
 	_isDigit (char) {
 		let parsedDigit = parseInt(char, 10);
 
 		return !isNaN(parsedDigit);
+	}
+
+	_isLetter (char) {
+		return /^[a-zA-Z]$/.test(char);
 	}
 };

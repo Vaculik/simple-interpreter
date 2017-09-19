@@ -6,5 +6,11 @@ module.exports = {
 	DIV: 'DIV',
 	LPAREN: '(',
 	RPAREN: ')',
+	BEGIN: 'BEGIN',
+	END: 'END',
+	DOT: '.',
+	ASSIGN: ':=',
+	SEMI: ';',
+	ID: 'ID',
 	EOF: 'EFO',
 };
