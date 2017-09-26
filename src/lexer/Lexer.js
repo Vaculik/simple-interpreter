@@ -1,18 +1,5 @@
 const Token = require('lexer/token/Token');
-const {
-	INTEGER,
-	PLUS,
-	MINUS,
-	MUL,
-	DIV,
-	LPAREN,
-	RPAREN,
-	ID,
-	ASSIGN,
-	SEMI,
-	DOT,
-	EOF,
-} = require('lexer/token/token-types');
+const tt = require('lexer/token/token-types');
 const RESERVED_KEYWORDS = require('lexer/token/reserved-keywords');
 
 
@@ -52,15 +39,34 @@ module.exports = class Lexer {
 		}
 	}
 
-	integer () {
+	skipComment () {
+		while (this.currentChar !== '}') {
+			this.advance();
+		}
+		this.advance();
+	}
+
+	number () {
 		let result = '';
 
-		while (this.currentChar !== null && this._isDigit(this.currentChar)) {
+		while (this._isCurrentCharDigit()) {
 			result += this.currentChar;
 			this.advance();
 		}
 
-		return parseInt(result);
+		if (this.currentChar === '.') {
+			result += this.currentChar;
+			this.advance();
+
+			while (this._isCurrentCharDigit()) {
+				result += this.currentChar;
+				this.advance();
+			}
+
+			return new Token(tt.REAL_CONST, parseFloat(result));
+		}
+
+		return new Token(tt.INTEGER_CONST, parseInt(result));
 	}
 
 	id() {
@@ -82,37 +88,37 @@ module.exports = class Lexer {
 			}
 
 			if (this._isDigit(this.currentChar)) {
-				return new Token(INTEGER, this.integer());
+				return this.number();
 			}
 
 			if (this.currentChar === '+') {
 				this.advance();
-				return new Token(PLUS, '+');
+				return new Token(tt.PLUS, '+');
 			}
 
 			if (this.currentChar === '-') {
 				this.advance();
-				return new Token(MINUS, '-');
+				return new Token(tt.MINUS, '-');
 			}
 
 			if (this.currentChar === '*') {
 				this.advance();
-				return new Token(MUL, '*');
+				return new Token(tt.MUL, '*');
 			}
 
 			if (this.currentChar === '/') {
 				this.advance();
-				return new Token(DIV, '/');
+				return new Token(tt.DIV, '/');
 			}
 
 			if (this.currentChar === '(') {
 				this.advance();
-				return new Token(LPAREN, '(');
+				return new Token(tt.LPAREN, '(');
 			}
 
 			if (this.currentChar === ')') {
 				this.advance();
-				return new Token(RPAREN, ')');
+				return new Token(tt.RPAREN, ')');
 			}
 
 			if (this._isLetter(this.currentChar)) {
@@ -122,23 +128,44 @@ module.exports = class Lexer {
 			if (this.currentChar === ':' && this.peek() === '=') {
 				this.advance();
 				this.advance();
-				return new Token(ASSIGN, ':=');
+				return new Token(tt.ASSIGN, ':=');
+			}
+
+			if (this.currentChar === ':') {
+				this.advance();
+				return new Token(tt.COLON, ':');
 			}
 
 			if (this.currentChar === ';') {
 				this.advance();
-				return new Token(SEMI, ';');
+				return new Token(tt.SEMI, ';');
 			}
 
 			if (this.currentChar === '.') {
 				this.advance();
-				return new Token(DOT, '.');
+				return new Token(tt.DOT, '.');
+			}
+
+			if (this.currentChar === '{') {
+				this.advance();
+				this.skipComment();
+				continue;
+			}
+
+			if (this.currentChar === ',') {
+				this.advance();
+				return new Token(tt.COMMA, ',');
+			}
+
+			if (this.currentChar === '/') {
+				this.advance();
+				return new Token(tt.FLOAT_DIV, '/');
 			}
 
 			this.error();
 		}
 
-		return new Token(EOF, null);
+		return new Token(tt.EOF, null);
 	}
 
 
@@ -154,5 +181,9 @@ module.exports = class Lexer {
 
 	_isLetter (char) {
 		return /^[a-zA-Z]$/.test(char);
+	}
+
+	_isCurrentCharDigit () {
+		return this.currentChar !== null && this._isLetter(this.currentChar);
 	}
 };

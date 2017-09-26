@@ -1,9 +1,4 @@
-const {
-	PLUS,
-	MINUS,
-	MUL,
-	DIV,
-} = require('lexer/token/token-types');
+const tt = require('lexer/token/token-types');
 const NodeVisitor = require('interpreter/NodeVisitor');
 
 
@@ -39,19 +34,24 @@ module.exports = class Interpreter extends NodeVisitor {
 	_visitBinOp (node) {
 		const opType = node.op.type;
 
-		if (opType === PLUS) {
+		if (opType === tt.PLUS) {
 			return this.visit(node.left) + this.visit(node.right);
 		}
 
-		if (opType === MINUS) {
+		if (opType === tt.MINUS) {
 			return this.visit(node.left) - this.visit(node.right);
 		}
 
-		if (opType === MUL) {
+		if (opType === tt.MUL) {
 			return this.visit(node.left) * this.visit(node.right);
 		}
 
-		if (opType === DIV) {
+		if (opType === tt.INTEGER_DIV) {
+			const realDivResult = this.visit(node.left) / this.visit(node.right);
+			return Math.floor(realDivResult);
+		}
+
+		if (opType === tt.REAL_DIV) {
 			return this.visit(node.left) / this.visit(node.right);
 		}
 	}
@@ -59,11 +59,11 @@ module.exports = class Interpreter extends NodeVisitor {
 	_visitUnaryOp (node) {
 		const opType = node.op.type;
 
-		if (opType === PLUS) {
+		if (opType === tt.PLUS) {
 			return +this.visit(node.expr);
 		}
 
-		if (opType === MINUS) {
+		if (opType === tt.MINUS) {
 			return -this.visit(node.expr);
 		}
 	}
@@ -89,5 +89,23 @@ module.exports = class Interpreter extends NodeVisitor {
 		}
 
 		return value;
+	}
+
+	_visitProgram (node) {
+		this.visit(node.block);
+	}
+
+	_visitBlock (node) {
+		for (const declaration of node.declarations) {
+			this.visit(declaration);
+		}
+
+		this.visit(node.compoundStatement);
+	}
+
+	_visitVarDecl(node) {
+	}
+
+	_visitType(node) {
 	}
 };
