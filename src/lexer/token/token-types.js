@@ -1,6 +1,7 @@
 module.exports = {
 	PROGRAM: 'PROGRAM',
 	VAR: 'VAR',
+	PROCEDURE: 'PROCEDURE',
 	COLON: ':',
 	COMMA: ',',
 	INTEGER: 'INTEGER',

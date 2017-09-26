@@ -77,7 +77,7 @@ module.exports = class Lexer {
 			this.advance();
 		}
 
-		return RESERVED_KEYWORDS[result] || new Token(ID, result);
+		return RESERVED_KEYWORDS[result] || new Token(tt.ID, result);
 	}
 
 	getNextToken () {

@@ -10,7 +10,7 @@ const Block = require('parser/ast/Block');
 const VarDecl = require('parser/ast/VarDecl');
 const Type = require('parser/ast/Type');
 const Program = require('parser/ast/Program');
-
+const ProcedureDecl = require('parser/ast/ProcedureDecl');
 
 
 module.exports = class Parser {
@@ -20,10 +20,12 @@ module.exports = class Parser {
 	}
 
 	error () {
-		throw Error('Invalid syntax');
+		throw new Error('Invalid syntax');
 	}
 
 	eat (tokenType) {
+		console.log(tokenType);
+		console.log(this.currentToken.type);
 		if (this.currentToken.type === tokenType) {
 			this.currentToken = this.lexer.getNextToken();
 		} else {
@@ -186,13 +188,27 @@ module.exports = class Parser {
 		const declarations = [];
 
 		if (this.currentToken.type === tt.VAR) {
-			this.eat(VAR);
+			this.eat(tt.VAR);
 			while (this.currentToken.type === tt.ID) {
 				const varDecl = this.variableDeclaration();
 
 				declarations.push(varDecl);
-				this.eat(SEMI);
+				this.eat(tt.SEMI);
 			}
+		}
+
+		while (this.currentToken.type === tt.PROCEDURE) {
+			this.eat(tt.PROCEDURE);
+			const procName = this.currentToken.value;
+
+			this.eat(tt.ID);
+			this.eat(tt.SEMI);
+
+			const blockNode = this.block();
+			const procDecl = new ProcedureDecl(procName, blockNode);
+
+			declarations.push(procDecl);
+			this.eat(tt.SEMI);
 		}
 
 		return declarations;
@@ -206,8 +222,10 @@ module.exports = class Parser {
 		while (this.currentToken.type === tt.COMMA) {
 			this.eat(tt.COMMA);
 			varNodes.push(new Var(this.currentToken));
-			this.eat(ID)
+			this.eat(tt.ID)
 		}
+
+		this.eat(tt.COLON);
 
 		const typeNode = this.typeSpec();
 		const varDeclarations = varNodes.map((varNode) => new VarDecl(varNode, typeNode));

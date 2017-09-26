@@ -10,9 +10,27 @@ module.exports = class SymbolTableBuilder extends NodeVisitor {
 		this.symtab = new SymbolTable();
 
 		this.visit = super.visit.bind(this);
+		this.visitBinOp = this._visitBinOp.bind(this);
+		this.visitUnaryOp = this._visitUnaryOp.bind(this);
+		this.visitCompound = this._visitCompound.bind(this);
+		this.visitAssign = this._visitAssign.bind(this);
+		this.visitVar = this._visitVar.bind(this);
+		this.visitProgram = this._visitProgram.bind(this);
+		this.visitBlock = this._visitBlock.bind(this);
+		this.visitVarDecl = this._visitVarDecl.bind(this);
 	}
 
-	visitBlock (node) {
+
+	visitProcedureDecl (node) {
+	}
+
+	visitNoOp (node) {
+	}
+
+	visitNum (node) {
+	}
+
+	_visitBlock (node) {
 		for (const declaration of node.declarations) {
 			this.visit(declaration);
 		}
@@ -20,32 +38,26 @@ module.exports = class SymbolTableBuilder extends NodeVisitor {
 		this.visit(node.compoundStatement);
 	}
 
-	visitProgram (node) {
+	_visitProgram (node) {
 		this.visit(node.block);
 	}
 
-	visitBinOp (node) {
+	_visitBinOp (node) {
 		this.visit(node.left);
 		this.visit(node.right);
 	}
 
-	visitNum (node) {
-	}
-
-	visitUnaryOp (node) {
+	_visitUnaryOp (node) {
 		this.visit(node.expr);
 	}
 
-	visitCompound (node) {
+	_visitCompound (node) {
 		for (const child of node.children) {
 			this.visit(child);
 		}
 	}
 
-	visitNoOp (node) {
-	}
-
-	visitVarDecl (node) {
+	_visitVarDecl (node) {
 		const typeName = node.typeNode.value;
 		const typeSymbol = this.symtab.lookup(typeName);
 		const varName = node.varNode.value;
@@ -54,7 +66,7 @@ module.exports = class SymbolTableBuilder extends NodeVisitor {
 		this.symtab.define(varSymbol);
 	}
 
-	visitAssign (node) {
+	_visitAssign (node) {
 		const varName = node.left.value;
 		const varSymbol = this.symtab.lookup(varName);
 
@@ -65,7 +77,7 @@ module.exports = class SymbolTableBuilder extends NodeVisitor {
 		this.visit(node.right);
 	}
 
-	visitVar (node) {
+	_visitVar (node) {
 		const varName = node.value;
 		const varSymbol = this.symtab.lookup(varName);
 

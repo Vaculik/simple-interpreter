@@ -15,6 +15,8 @@ module.exports = class Interpreter extends NodeVisitor {
 		this.visitCompound = this._visitCompound.bind(this);
 		this.visitAssign = this._visitAssign.bind(this);
 		this.visitVar = this._visitVar.bind(this);
+		this.visitProgram = this._visitProgram.bind(this);
+		this.visitBlock = this._visitBlock.bind(this);
 	}
 
 	visitNum (node) {
@@ -22,6 +24,12 @@ module.exports = class Interpreter extends NodeVisitor {
 	}
 
 	visitNoOp (node) {
+	}
+
+	visitVarDecl(node) {
+	}
+
+	visitType(node) {
 	}
 
 	interpret () {
@@ -101,11 +109,5 @@ module.exports = class Interpreter extends NodeVisitor {
 		}
 
 		this.visit(node.compoundStatement);
-	}
-
-	_visitVarDecl(node) {
-	}
-
-	_visitType(node) {
 	}
 };

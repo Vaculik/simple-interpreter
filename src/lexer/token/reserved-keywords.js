@@ -10,4 +10,5 @@ module.exports = {
 	'REAL': new Token(tt.REAL, 'REAL'),
 	'BEGIN': new Token(tt.BEGIN, 'BEGIN'),
 	'END': new Token(tt.END, 'END'),
+	'PROCEDURE': new Token(tt.PROCEDURE, 'PROCEDURE'),
 };
