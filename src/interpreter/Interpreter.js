@@ -26,10 +26,14 @@ module.exports = class Interpreter extends NodeVisitor {
 	visitNoOp (node) {
 	}
 
-	visitVarDecl(node) {
+	visitVarDecl (node) {
 	}
 
-	visitType(node) {
+	visitType (node) {
+	}
+
+	visitProcedureDecl (node) {
+
 	}
 
 	interpret () {

@@ -24,8 +24,6 @@ module.exports = class Parser {
 	}
 
 	eat (tokenType) {
-		console.log(tokenType);
-		console.log(this.currentToken.type);
 		if (this.currentToken.type === tokenType) {
 			this.currentToken = this.lexer.getNextToken();
 		} else {
@@ -192,7 +190,7 @@ module.exports = class Parser {
 			while (this.currentToken.type === tt.ID) {
 				const varDecl = this.variableDeclaration();
 
-				declarations.push(varDecl);
+				declarations.push(...varDecl);
 				this.eat(tt.SEMI);
 			}
 		}

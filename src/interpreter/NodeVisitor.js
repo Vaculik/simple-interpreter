@@ -3,6 +3,8 @@ module.exports = class NodeVisitor {
 		const methodName = `visit${node.constructor.name}`;
 		const visitor = this[methodName];
 
+		console.log(methodName);
+
 		return visitor(node);
 	}
 

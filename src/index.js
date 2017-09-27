@@ -21,7 +21,5 @@ const rl = readline.createInterface({
 		const parser = new Parser(lexer);
 		const interpreter = new Interpreter(parser);
 		const result = interpreter.interpret();
-
-		console.log(result);
 	});
 })();

@@ -184,6 +184,6 @@ module.exports = class Lexer {
 	}
 
 	_isCurrentCharDigit () {
-		return this.currentChar !== null && this._isLetter(this.currentChar);
+		return this.currentChar !== null && this._isDigit(this.currentChar);
 	}
 };
