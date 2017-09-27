@@ -72,7 +72,7 @@ module.exports = class Lexer {
 	id() {
 		let result = '';
 
-		while (this.currentChar !== null && this._isLetter(this.currentChar)) {
+		while (this.currentChar !== null && this._isLetterOrDigit(this.currentChar)) {
 			result += this.currentChar;
 			this.advance();
 		}
@@ -181,6 +181,10 @@ module.exports = class Lexer {
 
 	_isLetter (char) {
 		return /^[a-zA-Z]$/.test(char);
+	}
+
+	_isLetterOrDigit (char) {
+		return this._isDigit(char) || this._isLetter(char);
 	}
 
 	_isCurrentCharDigit () {

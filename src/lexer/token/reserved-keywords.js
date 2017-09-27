@@ -3,12 +3,12 @@ const Token = require('lexer/token/Token');
 
 
 module.exports = {
-	'PROGRAM': new Token(tt.PROGRAM, 'PROGRAM'),
-	'VAR': new Token(tt.VAR, 'VAR'),
+	'program': new Token(tt.PROGRAM, 'program'),
+	'var': new Token(tt.VAR, 'var'),
 	'DIV': new Token(tt.INTEGER_DIV, 'DIV'),
-	'INTEGER': new Token(tt.INTEGER, 'INTEGER'),
-	'REAL': new Token(tt.REAL, 'REAL'),
-	'BEGIN': new Token(tt.BEGIN, 'BEGIN'),
-	'END': new Token(tt.END, 'END'),
-	'PROCEDURE': new Token(tt.PROCEDURE, 'PROCEDURE'),
+	'integer': new Token(tt.INTEGER, 'integer'),
+	'real': new Token(tt.REAL, 'real'),
+	'begin': new Token(tt.BEGIN, 'begin'),
+	'end': new Token(tt.END, 'end'),
+	'procedure': new Token(tt.PROCEDURE, 'procedure'),
 };

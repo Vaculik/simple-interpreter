@@ -4,6 +4,7 @@ const fs = require('fs');
 const Lexer = require('lexer/Lexer');
 const Parser = require('parser/Parser');
 const Interpreter = require('interpreter/Interpreter');
+const SemanticAnalyzer = require('semantic/SemanticAnalyzer');
 
 
 const rl = readline.createInterface({
@@ -19,7 +20,19 @@ const rl = readline.createInterface({
 
 		const lexer = new Lexer(data);
 		const parser = new Parser(lexer);
-		const interpreter = new Interpreter(parser);
-		const result = interpreter.interpret();
+		const astTree = parser.parse();
+
+		const semanticAnalyzer = new SemanticAnalyzer();
+
+		try {
+			semanticAnalyzer.visit(astTree);
+		} catch (err) {
+			console.log(err);
+		}
+
+		const interpreter = new Interpreter(astTree);
+		interpreter.interpret();
+
+		console.log(interpreter.globalMemory);
 	});
 })();

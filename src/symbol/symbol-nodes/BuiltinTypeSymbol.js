@@ -1,4 +1,4 @@
-const Symbol = require('interpreter/symbol/Symbol');
+const Symbol = require('symbol/symbol-nodes/Symbol');
 
 module.exports = class BuiltinTypeSymbol extends Symbol {
 	constructor (name) {
@@ -6,6 +6,6 @@ module.exports = class BuiltinTypeSymbol extends Symbol {
 	}
 
 	toString () {
-		return this.name;
+		return `<${this.constructor.name}(${this.name})>`;
 	}
 };

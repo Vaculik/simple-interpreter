@@ -1,3 +1,2 @@
 module.exports = class Ast {
-
 };

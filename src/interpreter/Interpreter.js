@@ -3,11 +3,11 @@ const NodeVisitor = require('interpreter/NodeVisitor');
 
 
 module.exports = class Interpreter extends NodeVisitor {
-	constructor (parser) {
+	constructor (tree) {
 		super();
 
-		this.parser = parser;
-		this.globalScope = {};
+		this.tree = tree;
+		this.globalMemory = new Map();
 
 		this.visit = super.visit.bind(this);
 		this.visitBinOp = this._visitBinOp.bind(this);
@@ -24,23 +24,27 @@ module.exports = class Interpreter extends NodeVisitor {
 	}
 
 	visitNoOp (node) {
+		// Do nothing
 	}
 
 	visitVarDecl (node) {
+		// Do nothing
 	}
 
 	visitType (node) {
+		// Do nothing
 	}
 
 	visitProcedureDecl (node) {
-
+        // Do nothing
 	}
 
 	interpret () {
-		const tree = this.parser.parse();
+		if (!this.tree) {
+			return '';
+		}
 
-		this.visit(tree);
-		console.log(this.globalScope);
+		return this.visit(this.tree);
 	}
 
 	_visitBinOp (node) {
@@ -89,12 +93,12 @@ module.exports = class Interpreter extends NodeVisitor {
 	_visitAssign (node) {
 		const varName = node.left.value;
 
-		this.globalScope[varName] = this.visit(node.right);
+		this.globalMemory.set(varName, this.visit(node.right));
 	}
 
 	_visitVar (node) {
 		const varName = node.value;
-		const value = this.globalScope[varName];
+		const value = this.globalMemory.get(varName);
 
 		if (value === undefined) {
 			throw Error('Unknown variable');

@@ -11,6 +11,7 @@ const VarDecl = require('parser/ast/VarDecl');
 const Type = require('parser/ast/Type');
 const Program = require('parser/ast/Program');
 const ProcedureDecl = require('parser/ast/ProcedureDecl');
+const Param = require('parser/ast/Param');
 
 
 module.exports = class Parser {
@@ -24,6 +25,8 @@ module.exports = class Parser {
 	}
 
 	eat (tokenType) {
+		console.log(`Expect: ${tokenType}`);
+		console.log(`Get: ${this.currentToken.type}`);
 		if (this.currentToken.type === tokenType) {
 			this.currentToken = this.lexer.getNextToken();
 		} else {
@@ -185,28 +188,40 @@ module.exports = class Parser {
 	declarations () {
 		const declarations = [];
 
-		if (this.currentToken.type === tt.VAR) {
-			this.eat(tt.VAR);
-			while (this.currentToken.type === tt.ID) {
-				const varDecl = this.variableDeclaration();
+		while (true) {
+			if (this.currentToken.type === tt.VAR) {
+				this.eat(tt.VAR);
+				while (this.currentToken.type === tt.ID) {
+					const varDecl = this.variableDeclaration();
 
-				declarations.push(...varDecl);
+					declarations.push(...varDecl);
+					this.eat(tt.SEMI);
+				}
+			} else if (this.currentToken.type === tt.PROCEDURE) {
+				this.eat(tt.PROCEDURE);
+				const procName = this.currentToken.value;
+
+				this.eat(tt.ID);
+				const params = [];
+
+				if (this.currentToken.type === tt.LPAREN) {
+					this.eat(tt.LPAREN);
+
+					params.push(...this.formalParameterList());
+
+					this.eat(tt.RPAREN);
+				}
+
 				this.eat(tt.SEMI);
+
+				const blockNode = this.block();
+				const procDecl = new ProcedureDecl(procName, blockNode);
+
+				declarations.push(procDecl);
+				this.eat(tt.SEMI);
+			} else {
+				break;
 			}
-		}
-
-		while (this.currentToken.type === tt.PROCEDURE) {
-			this.eat(tt.PROCEDURE);
-			const procName = this.currentToken.value;
-
-			this.eat(tt.ID);
-			this.eat(tt.SEMI);
-
-			const blockNode = this.block();
-			const procDecl = new ProcedureDecl(procName, blockNode);
-
-			declarations.push(procDecl);
-			this.eat(tt.SEMI);
 		}
 
 		return declarations;
@@ -231,7 +246,7 @@ module.exports = class Parser {
 		return varDeclarations;
 	}
 
-	typeSpec() {
+	typeSpec () {
 		const token = this.currentToken;
 
 		if (this.currentToken.type === tt.INTEGER) {
@@ -241,6 +256,41 @@ module.exports = class Parser {
 		}
 
 		return new Type(token);
+	}
+
+	formalParameterList () {
+		if (this.currentToken.type !== tt.ID) {
+			return [];
+		}
+
+		const paramNodes = this.formalParameters();
+
+		while (this.currentToken.type === tt.SEMI) {
+			this.eat(tt.SEMI);
+			paramNodes.push(...this.formalParameters());
+		}
+
+		return paramNodes;
+	}
+
+	formalParameters () {
+		const paramTokens = [this.currentToken];
+
+		this.eat(tt.ID);
+
+		while (this.currentToken.type === tt.COMMA) {
+			this.eat(tt.COMMA);
+			paramTokens.push(this.currentToken);
+			this.eat(tt.ID)
+		}
+
+		this.eat(tt.COLON);
+
+		const typeNode = this.typeSpec();
+		const paramNodes = paramTokens.map((paramToken) => new Param(new Var(paramToken), typeNode));
+
+		return paramNodes;
+
 	}
 
 	parse () {
