@@ -1,121 +1,138 @@
-const tt = require('lexer/token/token-types');
-const NodeVisitor = require('interpreter/NodeVisitor');
+const tt = require('../lexer/token/token-types');
+const NodeVisitor = require('./NodeVisitor');
+const VariableAst = require('../parser/ast/VariableAst');
+const Environment = require('./Environment');
 
 
 module.exports = class Interpreter extends NodeVisitor {
-	constructor (tree) {
+	constructor (astTree) {
 		super();
 
-		this.tree = tree;
-		this.globalMemory = new Map();
-
-		this.visit = super.visit.bind(this);
-		this.visitBinOp = this._visitBinOp.bind(this);
-		this.visitUnaryOp = this._visitUnaryOp.bind(this);
-		this.visitCompound = this._visitCompound.bind(this);
-		this.visitAssign = this._visitAssign.bind(this);
-		this.visitVar = this._visitVar.bind(this);
-		this.visitProgram = this._visitProgram.bind(this);
-		this.visitBlock = this._visitBlock.bind(this);
+		this.astTree = astTree;
+        this.currentEnv = null;
 	}
 
-	visitNum (node) {
+	evaluate() {
+	    this.currentEnv = new Environment(this.currentEnv);
+	    this.currentEnv.defPrimitives();
+
+	    return this.visit(this.astTree);
+    }
+
+	visitBlockAst (node) {
+        let result = false;
+
+        node.expressions.forEach((exp) => result = this.visit(exp));
+
+        return result;
+    }
+
+	visitNumberAst (node) {
 		return node.value;
 	}
 
-	visitNoOp (node) {
-		// Do nothing
+	visitStringAst (node) {
+		return node.value;
 	}
 
-	visitVarDecl (node) {
-		// Do nothing
+	visitBooleanAst (node) {
+	    return node.value;
+    }
+
+	visitVariableAst (node) {
+        const varName = node.value;
+        const value = this.currentEnv.lookup(varName);
+
+        if (value === undefined) {
+            throw new Error(`Unknown variable "${varName}"`);
+        }
+
+        return value;
 	}
 
-	visitType (node) {
-		// Do nothing
-	}
+	visitAssignAst (node) {
+	    if (!(node.left instanceof VariableAst)) {
+	        throw new Error('Cannot assign to ' + JSON.stringify(node.left));
+        }
 
-	visitProcedureDecl (node) {
-        // Do nothing
-	}
+        const varName = node.left.value;
+        const valueToAssign = this.visit(node.right);
 
-	interpret () {
-		if (!this.tree) {
-			return '';
-		}
+	    this.currentEnv.insert(varName, valueToAssign);
+    }
 
-		return this.visit(this.tree);
-	}
+    visitBinaryAst (node) {
+	    const leftValue = this.visit(node.left);
+	    const rightValue = this.visit(node.right);
 
-	_visitBinOp (node) {
-		const opType = node.op.type;
+	    return this._applyOperator(node.op, leftValue, rightValue);
+    }
 
-		if (opType === tt.PLUS) {
-			return this.visit(node.left) + this.visit(node.right);
-		}
+    visitLambdaAst (node) {
+	    return this._makeLambda (node);
+    }
 
-		if (opType === tt.MINUS) {
-			return this.visit(node.left) - this.visit(node.right);
-		}
+    visitConditionAst (node) {
+	    const conditionResult = this.visit(node.condition);
 
-		if (opType === tt.MUL) {
-			return this.visit(node.left) * this.visit(node.right);
-		}
+	    if (conditionResult !== false) {
+	        return this.visit(node.thenBody);
+        }
+        return node.elseBody ? this.visit(node.elseBody) : false;
+    }
 
-		if (opType === tt.INTEGER_DIV) {
-			const realDivResult = this.visit(node.left) / this.visit(node.right);
-			return Math.floor(realDivResult);
-		}
+    visitLambdaCallAst (node) {
+	    const func = this.visit(node.func);
+	    const args = node.args.map((arg) => this.visit(arg));
 
-		if (opType === tt.REAL_DIV) {
-			return this.visit(node.left) / this.visit(node.right);
-		}
-	}
+	    return func(...args);
+    }
 
-	_visitUnaryOp (node) {
-		const opType = node.op.type;
+    _applyOperator (op, a, b) {
+        function num(x) {
+            if (typeof x != "number")
+                throw new Error("Expected number but got " + x);
+            return x;
+        }
+        function div(x) {
+            if (num(x) == 0)
+                throw new Error("Divide by zero");
+            return x;
+        }
+        switch (op) {
+            case "+"  : return num(a) + num(b);
+            case "-"  : return num(a) - num(b);
+            case "*"  : return num(a) * num(b);
+            case "/"  : return num(a) / div(b);
+            case "%"  : return num(a) % div(b);
+            case "&&" : return a !== false && b;
+            case "||" : return a !== false ? a : b;
+            case "<"  : return num(a) < num(b);
+            case ">"  : return num(a) > num(b);
+            case "<=" : return num(a) <= num(b);
+            case ">=" : return num(a) >= num(b);
+            case "==" : return a === b;
+            case "!=" : return a !== b;
+        }
+        throw new Error("Can't apply operator " + op);
+    }
 
-		if (opType === tt.PLUS) {
-			return +this.visit(node.expr);
-		}
+    _makeLambda (node) {
+	    function lambda () {
+	        const params = node.params;
 
-		if (opType === tt.MINUS) {
-			return -this.visit(node.expr);
-		}
-	}
+	        this.currentEnv = this.currentEnv.extend();
+	        for (let i = 0; i < params.length; i++) {
+	            const paramValue = i < arguments.length ? arguments[i] : false;
 
-	_visitCompound (node) {
-		for (const child of node.children) {
-			this.visit(child);
-		}
-	}
+	            this.currentEnv.insert(params[i], paramValue);
+            }
+            const result = this.visit(node.body);
 
-	_visitAssign (node) {
-		const varName = node.left.value;
+	        this.currentEnv = this.currentEnv.parent;
+	        return result;
+        }
 
-		this.globalMemory.set(varName, this.visit(node.right));
-	}
-
-	_visitVar (node) {
-		const varName = node.value;
-		const value = this.globalMemory.get(varName);
-
-		if (value === undefined) {
-			throw Error('Unknown variable');
-		}
-
-		return value;
-	}
-
-	_visitProgram (node) {
-		this.visit(node.block);
-	}
-
-	_visitBlock (node) {
-		for (const declaration of node.declarations) {
-			this.visit(declaration);
-		}
-
-		this.visit(node.compoundStatement);
-	}
+        return lambda.bind(this);
+    }
 };

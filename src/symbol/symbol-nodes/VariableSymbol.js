@@ -1,6 +1,6 @@
-const Symbol = require('symbol/symbol-nodes/Symbol');
+const Symbol = require('./Symbol');
 
-module.exports = class VarSymbol extends Symbol {
+module.exports = class VariableSymbol extends Symbol {
 	constructor (name, type) {
 		super(name, type);
 	}

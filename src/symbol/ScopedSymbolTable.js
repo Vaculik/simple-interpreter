@@ -1,4 +1,4 @@
-const BuiltinTypeSymbol = require('symbol/symbol-nodes/BuiltinTypeSymbol');
+const BuiltinTypeSymbol = require('./symbol-nodes/BuiltinTypeSymbol');
 
 module.exports = class ScopedSymbolTable {
 	constructor (scopeName, scopeLevel, enclosingScope = null) {
@@ -26,6 +26,10 @@ module.exports = class ScopedSymbolTable {
 		return lines.join('\n');
 	}
 
+	extend () {
+	    return new ScopedSymbolTable('lambda', this.scopeLevel + 1, this);
+    }
+
 	insert (symbol) {
 		this._symbols.set(symbol.name, symbol);
 	}
@@ -38,7 +42,7 @@ module.exports = class ScopedSymbolTable {
 		}
 
 		if (currentScopeOnly) {
-			return null;
+			return undefined;
 		}
 
 		if (this.enclosingScope) {

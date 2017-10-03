@@ -1,14 +1,14 @@
-const NodeVisitor = require('interpreter/NodeVisitor');
-const ScopedSymbolTable = require('symbol/ScopedSymbolTable');
-const VarSymbol = require('symbol/symbol-nodes/VarSymbol');
-const ProcedureSymbol = require('symbol/symbol-nodes/ProcedureSymbol');
+const NodeVisitor = require('../interpreter/NodeVisitor');
+const ScopedSymbolTable = require('../symbol/ScopedSymbolTable');
+const VariableSymbol = require('../symbol/symbol-nodes/VariableSymbol');
+const LambdaSymbol = require('../symbol/symbol-nodes/LambdaSymbol');
 
 
 module.exports = class SemanticAnalyzer extends NodeVisitor {
 	constructor () {
 		super();
 
-		this.currentScope = null;
+		this.currentEnv = null;
 
 		this.visit = super.visit.bind(this);
 		this.visitCompound = this._visitCompound.bind(this);
@@ -26,16 +26,16 @@ module.exports = class SemanticAnalyzer extends NodeVisitor {
 
 	_visitVarDecl (node) {
 		const typeName = node.typeNode.value;
-		const typeSymbol = this.currentScope.lookup(typeName);
+		const typeSymbol = this.currentEnv.lookup(typeName);
 
 		const varName = node.varNode.value;
-		const varSymbol = new VarSymbol(varName, typeSymbol);
+		const varSymbol = new VariableSymbol(varName, typeSymbol);
 
-		if (this.currentScope.lookup(varName)) {
+		if (this.currentEnv.lookup(varName)) {
 			throw new Error(`Error: Duplicate identifier '${varName}' found`);
 		}
 
-		this.currentScope.insert(varSymbol);
+		this.currentEnv.insert(varSymbol);
 	}
 
 	_visitBlock (node) {
@@ -47,39 +47,39 @@ module.exports = class SemanticAnalyzer extends NodeVisitor {
 	}
 
 	_visitProgram (node) {
-		const globalScope = new ScopedSymbolTable('global', 1, this.currentScope);
+		const globalScope = new ScopedSymbolTable('global', 1, this.currentEnv);
 
 		globalScope.initBuiltins();
-		this.currentScope = globalScope;
+		this.currentEnv = globalScope;
 
 		this.visit(node.block);
 
 		console.log(globalScope.toString());
 
-		this.currentScope = this.currentScope.enclosingScope;
+		this.currentEnv = this.currentEnv.enclosingScope;
 	}
 
 	_visitProcedureDecl (node) {
 		const procName = node.procName;
-		const procSymbol = new ProcedureSymbol(procName);
+		const procSymbol = new LambdaSymbol(procName);
 
-		this.currentScope.insert(procSymbol);
-		this.currentScope = new ScopedSymbolTable(procName, this.currentScope.scopeLevel + 1, this.currentScope);
+		this.currentEnv.insert(procSymbol);
+		this.currentEnv = new ScopedSymbolTable(procName, this.currentEnv.scopeLevel + 1, this.currentEnv);
 
 		for (const param in node.params) {
-			const paramType = this.currentScope.lookup(param.typeNode.value);
+			const paramType = this.currentEnv.lookup(param.typeNode.value);
 			const paramName = param.varNode.value;
-			const varSymbol = new VarSymbol(paramName, paramType);
+			const varSymbol = new VariableSymbol(paramName, paramType);
 
-			this.currentScope.insert(varSymbol);
+			this.currentEnv.insert(varSymbol);
 			procSymbol.params.push(varSymbol);
 		}
 
 		this.visit(node.blockNode);
 
-		console.log(this.currentScope);
+		console.log(this.currentEnv);
 
-		this.currentScope = this.currentScope.enclosingScope;
+		this.currentEnv = this.currentEnv.enclosingScope;
 	}
 
 	_visitCompound (node) {
@@ -90,7 +90,7 @@ module.exports = class SemanticAnalyzer extends NodeVisitor {
 
 	_visitVar (node) {
 		const varName = node.value;
-		const varSymbol = this.currentScope.lookup(varName);
+		const varSymbol = this.currentEnv.lookup(varName);
 
 		if (!varSymbol) {
 			throw new Error(`Error Symbol(identifier) not found '${varName}'`);

@@ -1,168 +1,155 @@
-const Token = require('lexer/token/Token');
-const tt = require('lexer/token/token-types');
-const RESERVED_KEYWORDS = require('lexer/token/reserved-keywords');
+const Token = require('./token/Token');
+const tt = require('./token/token-types');
+const RESERVED_KEYWORDS = require('./token/reserved-keywords');
 
 
 module.exports = class Lexer {
 	constructor(inputStream) {
 		this.inputStream = inputStream;
+		this.current = null;
 	}
 
 	error (msg) {
 		this.inputStream.error(msg);
 	}
 
-	skipWhitespace () {
-		while (!this.inputStream.eof() && this._isWhitespace(this.inputStream.peek())) {
-			this.inputStream.next();
-		}
-	}
+    peek() {
+        if (!this.current) {
+            this.current = this._getNextToken();
+        }
+        return this.current;
+    }
 
-	skipComment () {
-		while (this.inputStream.peek() !== '}') {
-			this.inputStream.next();
-		}
+    next() {
+        let token = this.current;
+
+        this.current = null;
+        return token || this._getNextToken();
+    }
+
+    eof() {
+        return this.peek() === null;
+    }
+
+	_skipComment () {
+		this._readWhile((c) => c !== '\n');
 		this.inputStream.next();
 	}
 
-	number () {
-		let result = '';
-
-		while (this._isCurrentCharDigit()) {
-			result += this.inputStream.next();
-		}
-
-		if (this.inputStream.peek() === '.') {
-			result += this.inputStream.next();
-
-			while (this._isCurrentCharDigit()) {
-				result += this.inputStream.next();
+	_readNumber () {
+		let hasDot = false;
+		const number = this._readWhile((c) => {
+			if (c === '.') {
+				if (hasDot) {
+					return false;
+				}
+				hasDot = true;
+				return true;
 			}
+			return this._isDigit(c);
+		});
 
-			return new Token(tt.REAL_CONST, parseFloat(result));
-		}
-
-		return new Token(tt.INTEGER_CONST, parseInt(result));
+		return new Token(tt.NUM, parseFloat(number));
 	}
 
-	id() {
-		let result = '';
+	_readId () {
+		const id = this._readWhile(this._isId.bind(this));
 
-		while (!this.inputStream.eof() && this._isLetterOrDigit(this.inputStream.peek())) {
-			result += this.inputStream.next();
-		}
-
-		return RESERVED_KEYWORDS[result] || new Token(tt.ID, result);
+		return RESERVED_KEYWORDS[id] || new Token(tt.VAR, id);
 	}
 
-	getNextToken () {
+	_readString () {
+		const value = this._readEscaped('"');
+
+		return new Token(tt.STR, value);
+	}
+
+	_readEscaped (end) {
+		let excaped = false;
+		let str = '';
+
+		this.inputStream.next();
 		while (!this.inputStream.eof()) {
-			if (this._isWhitespace(this.inputStream.peek())) {
-				this.skipWhitespace();
-				continue;
-			}
+			let c = this.inputStream.next();
 
-			if (this._isDigit(this.inputStream.peek())) {
-				return this.number();
+			if (excaped) {
+				str += c;
+				excaped = false;
+			} else if (c === '\\') {
+				excaped = true;
+			} else if (c === end) {
+				break;
+			} else {
+				str += c;
 			}
-
-			if (this.inputStream.peek() === '+') {
-				this.inputStream.next();
-				return new Token(tt.PLUS, '+');
-			}
-
-			if (this.inputStream.peek() === '-') {
-				this.inputStream.next();
-				return new Token(tt.MINUS, '-');
-			}
-
-			if (this.inputStream.peek() === '*') {
-				this.inputStream.next();
-				return new Token(tt.MUL, '*');
-			}
-
-			if (this.inputStream.peek() === '/') {
-				this.inputStream.next();
-				return new Token(tt.DIV, '/');
-			}
-
-			if (this.inputStream.peek() === '(') {
-				this.inputStream.next();
-				return new Token(tt.LPAREN, '(');
-			}
-
-			if (this.inputStream.peek() === ')') {
-				this.inputStream.next();
-				return new Token(tt.RPAREN, ')');
-			}
-
-			if (this._isLetter(this.inputStream.peek())) {
-				return this.id();
-			}
-
-			if (this.inputStream.peek() === ':' && this.peek() === '=') {
-				this.inputStream.next();
-				this.inputStream.next();
-				return new Token(tt.ASSIGN, ':=');
-			}
-
-			if (this.inputStream.peek() === ':') {
-				this.inputStream.next();
-				return new Token(tt.COLON, ':');
-			}
-
-			if (this.inputStream.peek() === ';') {
-				this.inputStream.next();
-				return new Token(tt.SEMI, ';');
-			}
-
-			if (this.inputStream.peek() === '.') {
-				this.inputStream.next();
-				return new Token(tt.DOT, '.');
-			}
-
-			if (this.inputStream.peek() === '{') {
-				this.inputStream.next();
-				this.skipComment();
-				continue;
-			}
-
-			if (this.inputStream.peek() === ',') {
-				this.inputStream.next();
-				return new Token(tt.COMMA, ',');
-			}
-
-			if (this.inputStream.peek() === '/') {
-				this.inputStream.next();
-				return new Token(tt.FLOAT_DIV, '/');
-			}
-
-			this.error('Invalid character');
 		}
 
-		return new Token(tt.EOF, null);
+		return str;
 	}
 
+	_readWhile (predicate) {
+		let str = '';
+
+		while (!this.inputStream.eof() && predicate(this.inputStream.peek())) {
+			str += this.inputStream.next();
+		}
+		return str;
+	}
+
+	_getNextToken () {
+		this._readWhile(this._isWhitespace);
+		if (this.inputStream.eof()) {
+			return null;
+		}
+
+		const c = this.inputStream.peek();
+
+		if (c === '#') {
+			this._skipComment();
+			return this._getNextToken();
+		}
+		if (c === '"') {
+			return this._readString();
+		}
+		if (this._isDigit(c)) {
+			return this._readNumber();
+		}
+		if (this._isIdStart(c)) {
+			return this._readId();
+		}
+		if (this._isPunc(c)) {
+			return new Token(tt.PUNC, this.inputStream.next());
+		}
+		if (this._isOpChar(c)) {
+			const op = this._readWhile(this._isOpChar);
+
+			return new Token(tt.OP, op);
+		}
+
+		this.error(`Cannot handle character: ${c}`);
+	}
 
 	_isWhitespace (char) {
 		return /^\s$/.test(char);
 	}
 
 	_isDigit (char) {
-		let parsedDigit = parseInt(char, 10);
-
-		return !isNaN(parsedDigit);
+		return /[0-9]/i.test(char);
 	}
 
-	_isLetter (char) {
-		return /^[a-zA-Z]$/.test(char);
+	_isIdStart (char) {
+		return /[a-zA-Z_]/i.test(char);
 	}
 
-	_isLetterOrDigit (char) {
-		return this._isDigit(char) || this._isLetter(char);
+	_isId (char) {
+		return this._isIdStart(char) || this._isDigit(char);
+	};
+
+	_isOpChar (char) {
+		return '+-*/%=&|<>!'.indexOf(char) >= 0;
 	}
 
-	_isCurrentCharDigit () {
-		return !this.inputStream.eof() && this._isDigit(this.inputStream.peek());
+	_isPunc (char) {
+		return ',;(){}[]'.indexOf(char) >= 0;
 	}
 };

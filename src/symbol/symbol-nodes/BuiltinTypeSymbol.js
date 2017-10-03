@@ -1,4 +1,4 @@
-const Symbol = require('symbol/symbol-nodes/Symbol');
+const Symbol = require('./Symbol');
 
 module.exports = class BuiltinTypeSymbol extends Symbol {
 	constructor (name) {

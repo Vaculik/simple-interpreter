@@ -1,6 +1,6 @@
-const Symbol = require('symbol/symbol-nodes/Symbol');
+const Symbol = require('./Symbol');
 
-module.exports = class ProcedureSymbol extends Symbol {
+module.exports = class LambdaSymbol extends Symbol {
 	constructor (name, params = null) {
 		super(name);
 

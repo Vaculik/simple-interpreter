@@ -1,0 +1,34 @@
+# comment
+
+# println("Hello World!");
+
+# println(2 + 3 * 4);
+
+fib = lambda (n) {
+    if n < 2 then n else fib(n - 1) + fib(n - 2);
+};
+
+# println(fib(15));
+
+printRange = lambda(a, b)
+                if a <= b then {
+                    print(a);
+                    if a + 1 <= b {
+                        print(", ");
+                        printRange(a + 1, b);
+                    } else println("");
+                };
+
+# printRange(1, 5);
+
+a = 5;
+scopeTest = lambda (c) {
+    a = 10;
+    b = c;
+    println (a);
+    println (b);
+};
+
+scopeTest (55);
+println (a);
+# println (b);

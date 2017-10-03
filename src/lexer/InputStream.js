@@ -28,6 +28,6 @@ module.exports = class InputStream {
 	}
 
 	error(msg) {
-		throw new Error(`${msg} (${this.line}:${col})`);
+		throw new Error(`${msg} (${this.line}:${this.col})`);
 	}
 };

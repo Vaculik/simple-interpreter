@@ -1,8 +1,9 @@
 module.exports = class NodeVisitor {
 	visit(node) {
 		const methodName = `visit${node.constructor.name}`;
-		const visitor = this[methodName] || this.genericVisit;
+		let visitor = this[methodName] || this.genericVisit;
 
+		visitor = visitor.bind(this);
 		return visitor(node);
 	}
 

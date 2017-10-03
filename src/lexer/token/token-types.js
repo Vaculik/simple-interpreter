@@ -1,26 +1,8 @@
 module.exports = {
-	PROGRAM: 'PROGRAM',
-	VAR: 'VAR',
-	PROCEDURE: 'PROCEDURE',
-	COLON: ':',
-	COMMA: ',',
-	INTEGER: 'INTEGER',
-	REAL: 'REAL',
-	INTEGER_CONST: 'INTEGER_CONST',
-	REAL_CONST: 'REAL_CONST',
-	INTEGER_DIV: 'DIV',
-	FLOAT_DIV: '/',
-	PLUS: 'PLUS',
-	MINUS: 'MINUS',
-	MUL: 'MUL',
-	DIV: 'DIV',
-	LPAREN: '(',
-	RPAREN: ')',
-	BEGIN: 'BEGIN',
-	END: 'END',
-	DOT: '.',
-	ASSIGN: ':=',
-	SEMI: ';',
-	ID: 'ID',
-	EOF: 'EFO',
+	PUNC: 'punc', // punctuation: parens, comma, semicolon etc.
+	NUM: 'num', // numbers
+	STR: 'str', // strings
+	KW: 'kw', // keywords
+	VAR: 'var', // identifiers
+	OP: 'op', // operators
 };

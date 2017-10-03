@@ -1,304 +1,240 @@
-const tt = require('lexer/token/token-types');
-const Num = require('parser/ast/Num');
-const BinOp = require('parser/ast/BinOp');
-const UnaryOp = require('parser/ast/UnaryOp');
-const Compound = require('parser/ast/Compound');
-const Assign = require('parser/ast/Assign');
-const Var = require('parser/ast/Var');
-const NoOp = require('parser/ast/NoOp');
-const Block = require('parser/ast/Block');
-const VarDecl = require('parser/ast/VarDecl');
-const Type = require('parser/ast/Type');
-const Program = require('parser/ast/Program');
-const ProcedureDecl = require('parser/ast/ProcedureDecl');
-const Param = require('parser/ast/Param');
+const tt = require('../lexer/token/token-types');
+const reservedKeywords = require('../lexer/token/reserved-keywords');
+const PRECEDENCE = require('./operator-precedence');
+const LambdaAst = require('./ast/LambdaAst');
+const ConditionAst = require('./ast/ConditionAst');
+const LambdaCallAst = require('./ast/LambdaCallAst');
+const BooleanAst = require('./ast/BooleanAst');
+const AssignAst = require('./ast/AssignAst');
+const BinaryAst = require('./ast/BinaryAst');
+const VariableAst = require('./ast/VariableAst');
+const BlockAst = require('./ast/BlockAst');
+const StringAst = require('./ast/StringAst');
+const NumberAst = require('./ast/NumberAst');
 
 
 module.exports = class Parser {
 	constructor (lexer) {
 		this.lexer = lexer;
-		this.currentToken = this.lexer.getNextToken();
-	}
 
-	error () {
-		throw new Error('Invalid syntax');
-	}
-
-	eat (tokenType) {
-		console.log(`Expect: ${tokenType}`);
-		console.log(`Get: ${this.currentToken.type}`);
-		if (this.currentToken.type === tokenType) {
-			this.currentToken = this.lexer.getNextToken();
-		} else {
-			this.error();
-		}
-	}
-
-	factor () {
-		const token = this.currentToken;
-
-		if (token.type === tt.PLUS) {
-			this.eat(tt.PLUS);
-			return new UnaryOp(token, this.factor());
-		} else if (token.type === tt.MINUS) {
-			this.eat(tt.MINUS);
-			return new UnaryOp(token, this.factor());
-		} else if (token.type === tt.INTEGER_CONST) {
-			this.eat(tt.INTEGER_CONST);
-			return new Num(token);
-		} else if (token.type === tt.REAL_CONST) {
-			this.eat(tt.REAL_CONST);
-			return new Num(token);
-		} else if (token.type === tt.LPAREN) {
-			this.eat(tt.LPAREN);
-			const node = this.expr();
-
-			this.eat(tt.RPAREN);
-			return node;
-		} else {
-			return this.variable();
-		}
-	}
-
-	term () {
-		let node = this.factor();
-
-		while ([tt.MUL, tt.INTEGER_DIV, tt.FLOAT_DIV].indexOf(this.currentToken.type) >= 0) {
-			const token = this.currentToken;
-
-			if (token.type === tt.MUL) {
-				this.eat(tt.MUL);
-			} else if (token.type === tt.INTEGER_DIV) {
-				this.eat(tt.INTEGER_DIV);
-			} else if (token.type === tt.FLOAT_DIV) {
-				this.eat(tt.FLOAT_DIV);
-			}
-
-			node = new BinOp(node, token, this.factor());
-		}
-
-		return node;
-	}
-
-	expr () {
-		let node = this.term();
-
-		while ([tt.PLUS, tt.MINUS].indexOf(this.currentToken.type) >= 0) {
-			const token = this.currentToken;
-
-			if (token.type === tt.PLUS) {
-				this.eat(tt.PLUS);
-			} else if (token.type === tt.MINUS) {
-				this.eat(tt.MINUS);
-			}
-
-			node = new BinOp(node, token, this.term());
-		}
-
-		return node;
-	}
-
-	program () {
-		this.eat(tt.PROGRAM);
-
-		const varNode = this.variable();
-		const progName = varNode.value;
-
-		this.eat(tt.SEMI);
-
-		const blockNode = this.block();
-		const programNode = new Program(progName, blockNode);
-
-		this.eat(tt.DOT);
-		return programNode;
-	}
-
-	compoundStatement () {
-		this.eat(tt.BEGIN);
-		const nodes = this.statementList();
-
-		this.eat(tt.END);
-		const root = new Compound();
-
-		for (const node of nodes) {
-			root.children.push(node);
-		}
-
-		return root;
-	}
-
-	statementList () {
-		const node = this.statement();
-		const results = [node];
-
-		while (this.currentToken.type === tt.SEMI) {
-			this.eat(tt.SEMI);
-			results.push(this.statement());
-		}
-
-		if (this.currentToken.type === tt.ID) {
-			this.error();
-		}
-
-		return results;
-	}
-
-	statement () {
-		let node = null;
-
-		if (this.currentToken.type === tt.BEGIN) {
-			node = this.compoundStatement();
-		} else if (this.currentToken.type === tt.ID) {
-			node = this.assignmentStatement();
-		} else {
-			node = this.empty();
-		}
-
-		return node;
-	}
-
-	assignmentStatement () {
-		const left = this.variable();
-		const token = this.currentToken;
-
-		this.eat(tt.ASSIGN);
-		const right = this.expr();
-
-		return new Assign(left, token, right);
-	}
-
-	variable () {
-		const node = new Var(this.currentToken);
-
-		this.eat(tt.ID);
-		return node;
-	}
-
-	empty () {
-		return new NoOp();
-	}
-
-	block () {
-		const declarationNodes = this.declarations();
-		const compoundStatementNode = this.compoundStatement();
-
-		return new Block(declarationNodes, compoundStatementNode);
-	}
-
-	declarations () {
-		const declarations = [];
-
-		while (true) {
-			if (this.currentToken.type === tt.VAR) {
-				this.eat(tt.VAR);
-				while (this.currentToken.type === tt.ID) {
-					const varDecl = this.variableDeclaration();
-
-					declarations.push(...varDecl);
-					this.eat(tt.SEMI);
-				}
-			} else if (this.currentToken.type === tt.PROCEDURE) {
-				this.eat(tt.PROCEDURE);
-				const procName = this.currentToken.value;
-
-				this.eat(tt.ID);
-				const params = [];
-
-				if (this.currentToken.type === tt.LPAREN) {
-					this.eat(tt.LPAREN);
-
-					params.push(...this.formalParameterList());
-
-					this.eat(tt.RPAREN);
-				}
-
-				this.eat(tt.SEMI);
-
-				const blockNode = this.block();
-				const procDecl = new ProcedureDecl(procName, blockNode);
-
-				declarations.push(procDecl);
-				this.eat(tt.SEMI);
-			} else {
-				break;
-			}
-		}
-
-		return declarations;
-	}
-
-	variableDeclaration () {
-		const varNodes = [new Var(this.currentToken)];
-
-		this.eat(tt.ID);
-
-		while (this.currentToken.type === tt.COMMA) {
-			this.eat(tt.COMMA);
-			varNodes.push(new Var(this.currentToken));
-			this.eat(tt.ID)
-		}
-
-		this.eat(tt.COLON);
-
-		const typeNode = this.typeSpec();
-		const varDeclarations = varNodes.map((varNode) => new VarDecl(varNode, typeNode));
-
-		return varDeclarations;
-	}
-
-	typeSpec () {
-		const token = this.currentToken;
-
-		if (this.currentToken.type === tt.INTEGER) {
-			this.eat(tt.INTEGER);
-		} else {
-			this.eat(tt.REAL);
-		}
-
-		return new Type(token);
-	}
-
-	formalParameterList () {
-		if (this.currentToken.type !== tt.ID) {
-			return [];
-		}
-
-		const paramNodes = this.formalParameters();
-
-		while (this.currentToken.type === tt.SEMI) {
-			this.eat(tt.SEMI);
-			paramNodes.push(...this.formalParameters());
-		}
-
-		return paramNodes;
-	}
-
-	formalParameters () {
-		const paramTokens = [this.currentToken];
-
-		this.eat(tt.ID);
-
-		while (this.currentToken.type === tt.COMMA) {
-			this.eat(tt.COMMA);
-			paramTokens.push(this.currentToken);
-			this.eat(tt.ID)
-		}
-
-		this.eat(tt.COLON);
-
-		const typeNode = this.typeSpec();
-		const paramNodes = paramTokens.map((paramToken) => new Param(new Var(paramToken), typeNode));
-
-		return paramNodes;
-
+		this._parseExpression = this._parseExpression.bind(this);
+		this._parseVariableName = this._parseVariableName.bind(this);
 	}
 
 	parse () {
-		const node = this.program();
+        const expressions = [];
 
-		if (this.currentToken.type !== tt.EOF) {
-			this.error();
-		}
-		return node;
-	}
+        while (!this.lexer.eof()) {
+            expressions.push(this._parseExpression());
+
+            if (!this.lexer.eof()) {
+                this._eatPunc(';');
+            }
+        }
+
+        return new BlockAst(expressions);
+    }
+
+	_parseLambda () {
+	    const params = this._delimited('(', ')', ',', this._parseVariableName);
+	    const body = this._parseExpression();
+
+	    return new LambdaAst(params, body);
+    }
+
+    _parseVariableName () {
+	    const nameToken = this.lexer.next();
+
+	    if (nameToken.type !== tt.VAR) {
+	        this.lexer.error('Expecting variable name');
+        }
+
+        return nameToken.value;
+    }
+
+    _parseIf () {
+	    this._eatKeyword('if');
+	    const condition = this._parseExpression();
+
+	    if (!this._isPunc('{')) {
+	        this._eatKeyword('then');
+        }
+        const thenBody = this._parseExpression();
+
+	    if (this._isKeyword('else')) {
+	        this.lexer.next();
+            const elseBody = this._parseExpression();
+
+            return new ConditionAst(condition, thenBody, elseBody);
+        }
+
+        return new ConditionAst(condition, thenBody);
+    }
+
+    _parseAtom () {
+	    return this._parseMaybeCall(() => {
+	        if (this._isPunc('(')) {
+	            this.lexer.next();
+	            const expression = this._parseExpression();
+
+	            this._eatPunc(')');
+	            return expression;
+            }
+            if (this._isPunc('{')) {
+	            return this._parseBlock();
+            }
+            if (this._isKeyword('if')) {
+	            return this._parseIf();
+            }
+            if (this._isKeyword('true') || this._isKeyword('false')) {
+	            return this._parseBool();
+            }
+            if (this._isKeyword('lambda')) {
+	            this.lexer.next();
+                return this._parseLambda();
+            }
+
+            const token = this.lexer.next();
+
+	        if (token.type === tt.VAR) {
+	            return new VariableAst(token);
+            }
+            if (token.type === tt.NUM) {
+                return new NumberAst(token);
+            }
+            if (token.type === tt.STR) {
+                return new StringAst(token);
+            }
+
+            this._throwUnexpectedToken(token);
+        })
+    }
+
+    _parseBool () {
+	    const value = this.lexer.next().value === 'true';
+
+	    return new BooleanAst(value);
+    }
+
+    _parseBlock () {
+	    const expressions = this._delimited('{', '}', ';', this._parseExpression);
+
+	    if (expressions.length === 0) {
+	        return reservedKeywords.false;
+        }
+        if (expressions.length === 1) {
+	        return expressions[0];
+        }
+
+        return new BlockAst(expressions)
+    }
+
+    _parseExpression () {
+	    return this._parseMaybeCall(() => this._parseMaybeBinary(this._parseAtom(), 0));
+    }
+
+    _parseMaybeCall (expressionParser) {
+	    const expression = expressionParser();
+
+	    return this._isPunc('(') ? this._parseCall(expression) : expression;
+    }
+
+    _parseCall (func) {
+	    const args = this._delimited('(', ')', ',', this._parseExpression);
+
+	    return new LambdaCallAst(func, args);
+    }
+
+    _parseMaybeBinary (left, myPrecedence) {
+	    const token = this.lexer.peek();
+
+	    if (token.type === tt.OP) {
+	        const hisPrecedence = PRECEDENCE[token.value];
+
+	        if (hisPrecedence > myPrecedence) {
+	            this.lexer.next();
+	            const right = this._parseMaybeBinary(this._parseAtom(), hisPrecedence);
+	            const astByType = token.value === '=' ? AssignAst : BinaryAst;
+	            const binary = new astByType(left, token.value, right);
+
+                return this._parseMaybeBinary(binary, myPrecedence);
+            }
+        }
+
+        return left;
+    }
+
+    _delimited (start, stop, separator, parser) {
+	    const parsedValues = [];
+	    let first = true;
+
+	    this._eatPunc(start);
+
+	    while (!this.lexer.eof()) {
+	        const isPunc = this._isPunc(stop);
+	        if (isPunc) {
+	            break;
+            }
+            if (first) {
+	            first = false;
+            } else {
+	            this._eatPunc(separator);
+            }
+            if (this._isPunc(stop)) {
+	            break;
+            }
+
+            parsedValues.push(parser());
+        }
+
+        this._eatPunc(stop);
+
+	    return parsedValues;
+    }
+
+    _isPunc (c) {
+	    const token = this.lexer.peek();
+
+	    return token && token.type === tt.PUNC && token.value === c;
+    }
+
+    _isKeyword (keyword) {
+	    const token = this.lexer.peek();
+
+	    return token && token.type === tt.KW && token.value === keyword;
+    }
+
+    _isOperator (op) {
+	    const token = this.lexer.peek();
+
+	    return token && token.type === tt.OP && token.value === op;
+    }
+
+    _eatPunc (c) {
+	    if (this._isPunc(c)) {
+	        this.lexer.next();
+        } else {
+	        this.lexer.error(`Expecting punctuation: "${c}"`);
+        }
+    }
+
+    _eatKeyword (keyword) {
+	    if (this._isKeyword(keyword)) {
+	        this.lexer.next();
+        } else {
+	        this.lexer.error(`Expecting keyword: "${keyword}"`);
+        }
+    }
+
+    _eatOperator (op) {
+	    if (this._isOperator(op)) {
+	        this.lexer.next();
+        } else {
+	        this.lexer.error(`Expecting operator: "${op}"`);
+        }
+    }
+
+    _throwUnexpectedToken (token) {
+	    this.lexer.error(`Unexpected token: ${token.toString()}`);
+    }
 };
